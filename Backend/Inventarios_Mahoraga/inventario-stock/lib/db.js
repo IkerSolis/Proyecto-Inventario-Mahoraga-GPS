@@ -14,8 +14,36 @@ let products = [
 let stockMovements = [];
 let nextMovementId = 1;
 
+// Simula la tabla "usuarios"
+// Roles permitidos: 'Admin', 'empleado'
+// Estados permitidos: 'activo', 'desactivado', 'suspendido'
+let users = [
+  {
+    id: 1,
+    nombre: "Juan Perez (Admin)",
+    edad: 28,
+    telefono: "5512345678",
+    rol: "Admin",
+    estado: "activo",
+    fechaCreacion: new Date().toISOString()
+  },
+  {
+    id: 2,
+    nombre: "Ana Lopez (Empleado)",
+    edad: 22,
+    telefono: "5587654321",
+    rol: "empleado",
+    estado: "activo",
+    fechaCreacion: new Date().toISOString()
+  }
+];
+let nextUserId = 3;
+
 module.exports = {
   products,
   stockMovements,
   getNextMovementId: () => nextMovementId++,
+  users,
+  getNextUserId: () => nextUserId++,
 };
+
