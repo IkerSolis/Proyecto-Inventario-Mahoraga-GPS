@@ -57,8 +57,8 @@
     },
     {
       id: 3,
-      nombre: 'Iker Solís',
-      email: 'iker.solis@mahoraga.com',
+      nombre: 'Ignacio Sánchez',
+      email: 'ignacio@mahoraga.com',
       rol: 'SuperAdmin',
       estado: 'Activo',
       ultimoAcceso: '2026-10-15 21:00',
@@ -75,8 +75,8 @@
     },
     {
       id: 5,
-      nombre: 'Samuel Mora',
-      email: 'samuel.mora@mahoraga.com',
+      nombre: 'Julio Mendoza',
+      email: 'julio@mahoraga.com',
       rol: 'Operador',
       estado: 'Suspendido',
       ultimoAcceso: '2026-10-10 14:22',
@@ -99,14 +99,14 @@
   var activityLog = [
     { type: 'login',    text: '<strong>Carlos Ruiz</strong> inició sesión desde 192.168.1.45',                      time: '2026-10-15 20:30' },
     { type: 'create',   text: '<strong>Carlos Ruiz</strong> invitó al usuario <strong>Julia Hernández</strong>',    time: '2026-10-15 19:50' },
-    { type: 'role',     text: '<strong>Iker Solís</strong> cambió el rol de <strong>María López</strong> a Operador', time: '2026-10-15 17:30' },
-    { type: 'status',   text: '<strong>Carlos Ruiz</strong> suspendió la cuenta de <strong>Samuel Mora</strong>',   time: '2026-10-14 16:10' },
+    { type: 'role',     text: '<strong>Ignacio Sánchez</strong> cambió el rol de <strong>María López</strong> a Operador', time: '2026-10-15 17:30' },
+    { type: 'status',   text: '<strong>Carlos Ruiz</strong> suspendió la cuenta de <strong>Julio Mendoza</strong>',   time: '2026-10-14 16:10' },
     { type: 'password', text: '<strong>Ana Fernández</strong> cambió su contraseña',                                 time: '2026-10-14 09:50' },
-    { type: 'session',  text: '<strong>Iker Solís</strong> revocó las sesiones de <strong>Samuel Mora</strong>',     time: '2026-10-13 15:20' },
+    { type: 'session',  text: '<strong>Ignacio Sánchez</strong> revocó las sesiones de <strong>Julio Mendoza</strong>',     time: '2026-10-13 15:20' },
     { type: 'login',    text: '<strong>María López</strong> inició sesión desde 10.0.0.12',                          time: '2026-10-13 08:00' },
-    { type: 'create',   text: '<strong>Iker Solís</strong> invitó al usuario <strong>Samuel Mora</strong>',          time: '2026-10-10 10:00' },
-    { type: 'status',   text: '<strong>Iker Solís</strong> activó la cuenta de <strong>Ana Fernández</strong>',      time: '2026-10-09 14:30' },
-    { type: 'role',     text: '<strong>Iker Solís</strong> asignó el rol <strong>Auditor</strong> a <strong>Ana Fernández</strong>', time: '2026-10-09 14:28' }
+    { type: 'create',   text: '<strong>Ignacio Sánchez</strong> invitó al usuario <strong>Julio Mendoza</strong>',          time: '2026-10-10 10:00' },
+    { type: 'status',   text: '<strong>Ignacio Sánchez</strong> activó la cuenta de <strong>Ana Fernández</strong>',      time: '2026-10-09 14:30' },
+    { type: 'role',     text: '<strong>Ignacio Sánchez</strong> asignó el rol <strong>Auditor</strong> a <strong>Ana Fernández</strong>', time: '2026-10-09 14:28' }
   ];
 
   var nextUserId = 7;
