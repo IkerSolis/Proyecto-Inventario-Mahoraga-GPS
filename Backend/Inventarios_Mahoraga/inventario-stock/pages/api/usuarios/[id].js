@@ -4,7 +4,11 @@ import {
   cambiarEstadoUsuario,
 } from '../../../lib/usuarioService';
 
-//Endpoint: /api/usuarios/[id]
+/**
+ * Endpoint: /api/usuarios/[id]
+ * GET - Consultar usuario por ID
+ * PUT / PATCH - Editar datos (nombre, email, edad, telefono), rol y/o estado
+ */
 export default function handler(req, res) {
   const { id } = req.query;
 
@@ -19,21 +23,49 @@ export default function handler(req, res) {
     }
   }
 
-  //Editar datos de usuario y/o asignar rol
+  // Editar datos de usuario y/o asignar rol
   if (req.method === 'PUT' || req.method === 'PATCH') {
     try {
-      const { nombre, edad, telefono, rol, estado } = req.body;
+      const {
+        nombre,
+        email,
+        edad,
+        telefono,
+        rol,
+        estado,
+        solicitanteRol: bodyRol,
+        solicitanteId: bodyId,
+      } = req.body || {};
+
+      const solicitanteRol = req.headers['x-user-role'] || bodyRol;
+      const solicitanteId = req.headers['x-user-id'] || bodyId;
 
       let usuarioActualizado;
 
-      // Si se envían datos personales o rol, ejecutamos editarUsuario
-      if (nombre !== undefined || edad !== undefined || telefono !== undefined || rol !== undefined) {
-        usuarioActualizado = editarUsuario(id, { nombre, edad, telefono, rol });
+      // Si se envían datos personales, email o rol
+      if (
+        nombre !== undefined ||
+        email !== undefined ||
+        edad !== undefined ||
+        telefono !== undefined ||
+        rol !== undefined
+      ) {
+        usuarioActualizado = editarUsuario(
+          id,
+          { nombre, email, edad, telefono, rol },
+          solicitanteRol,
+          solicitanteId
+        );
       }
 
-      // Si también se incluyó el estado en la misma petición, lo actualizamos
+      // Si también se incluyó el estado en la misma petición
       if (estado !== undefined) {
-        usuarioActualizado = cambiarEstadoUsuario(id, estado);
+        usuarioActualizado = cambiarEstadoUsuario(
+          id,
+          estado,
+          solicitanteRol,
+          solicitanteId
+        );
       }
 
       if (!usuarioActualizado) {
@@ -45,9 +77,16 @@ export default function handler(req, res) {
         usuario: usuarioActualizado,
       });
     } catch (error) {
-      const statusCode = error.message === 'Usuario no encontrado' ? 404 : 400;
+      const isForbidden =
+        error.message.includes('No tienes permisos') ||
+        error.message.includes('Restricción de privilegios') ||
+        error.message.includes('supera tus permisos') ||
+        error.message.includes('cambiar tu propio rol');
+      const isNotFound = error.message === 'Usuario no encontrado';
+      const statusCode = isNotFound ? 404 : isForbidden ? 403 : 400;
       return res.status(statusCode).json({ error: error.message });
     }
   }
 
+  return res.status(405).json({ error: 'Método no permitido. Use GET, PUT o PATCH.' });
 }

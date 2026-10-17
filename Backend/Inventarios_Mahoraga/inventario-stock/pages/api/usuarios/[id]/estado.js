@@ -9,15 +9,20 @@ export default function handler(req, res) {
 
   if (req.method === 'PATCH' || req.method === 'PUT') {
     try {
-      const { estado } = req.body;
-      const usuarioActualizado = cambiarEstadoUsuario(id, estado);
+      const { estado, solicitanteRol: bodyRol, solicitanteId: bodyId } = req.body || {};
+      const solicitanteRol = req.headers['x-user-role'] || bodyRol;
+      const solicitanteId = req.headers['x-user-id'] || bodyId;
+
+      const usuarioActualizado = cambiarEstadoUsuario(id, estado, solicitanteRol, solicitanteId);
 
       return res.status(200).json({
         mensaje: `La cuenta ha sido actualizada al estado '${usuarioActualizado.estado}'`,
         usuario: usuarioActualizado,
       });
     } catch (error) {
-      const statusCode = error.message === 'Usuario no encontrado' ? 404 : 400;
+      const isForbidden = error.message.includes('No tienes privilegios');
+      const isNotFound = error.message === 'Usuario no encontrado';
+      const statusCode = isNotFound ? 404 : isForbidden ? 403 : 400;
       return res.status(statusCode).json({ error: error.message });
     }
   }
