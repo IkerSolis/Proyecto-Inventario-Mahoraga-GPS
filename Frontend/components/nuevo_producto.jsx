@@ -1,35 +1,185 @@
 import React, { useState } from 'react';
 import '../css/nuevo_producto.css';
 
-export const NuevoProducto = () => {
-  // Estado básico de los campos visuales
-  const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    categoria: 'Ferretería y Herramientas',
-    estadoInicial: 'Disponible',
-    precioVenta: '',
-    cantidadDisponible: '',
-    stockMinimo: '',
-    estado: 'Disponible',
-    imagen: null,
+const FORM_INICIAL = {
+  nombre: '',
+  descripcion: '',
+  categoria: 'Ferretería y Herramientas',
+  estadoInicial: 'Disponible',
+  precioVenta: '',
+  cantidadDisponible: '',
+  stockMinimo: '',
+  imagen: null,
+};
+
+const IMAGEN_MAX_BYTES = 5 * 1024 * 1024; // 5MB
+const IMAGEN_TIPOS = ['image/png', 'image/jpeg', 'image/jpg'];
+
+// Convierte lo que escribe el usuario ("1,250.50", "$ 99") en número. NaN si no es válido.
+const aNumero = (valor) => Number(String(valor).replace(/[$,\s]/g, ''));
+
+// Misma regla que usa el backend (calcularEstado) para mostrar el estado en vivo
+const calcularEstadoVisual = (cantidad, stockMinimo) => {
+  const stock = aNumero(cantidad || 0);
+  const minimo = aNumero(stockMinimo || 0);
+  if (!Number.isFinite(stock) || stock <= 0) return 'Agotado';
+  if (Number.isFinite(minimo) && stock < minimo) return 'Stock bajo';
+  return 'Disponible';
+};
+
+const leerArchivoComoDataUrl = (archivo) =>
+  new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(lector.result);
+    lector.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    lector.readAsDataURL(archivo);
   });
+
+/**
+ * Props opcionales:
+ *  - apiUrl:          URL base del backend. '' = mismo origen (Next.js). Ej: 'http://localhost:3000'
+ *  - onSaved(prod):   se ejecuta cuando el producto se guardó correctamente
+ *  - onCancel():      se ejecuta con "Cancelar" y con la flecha de regreso
+ *  - inventarioHref:  a dónde apunta el enlace "Inventario" del menú lateral
+ */
+export const NuevoProducto = ({
+  apiUrl = '',
+  onSaved,
+  onCancel,
+  inventarioHref = '#inventario',
+}) => {
+  const [formData, setFormData] = useState(FORM_INICIAL);
+  const [errors, setErrors] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState(null); // { tipo: 'ok' | 'error', texto }
+  const [inputArchivoKey, setInputArchivoKey] = useState(0);
+
+  // El campo "Estado" se calcula solo a partir de la cantidad y el stock mínimo
+  const estado = calcularEstadoVisual(formData.cantidadDisponible, formData.stockMinimo);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (aviso) setAviso(null);
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData((prev) => ({ ...prev, imagen: e.target.files[0] }));
+    const archivo = e.target.files && e.target.files[0];
+    if (!archivo) return;
+
+    if (!IMAGEN_TIPOS.includes(archivo.type)) {
+      setErrors((prev) => ({ ...prev, imagen: 'La imagen debe ser PNG o JPG' }));
+      setFormData((prev) => ({ ...prev, imagen: null }));
+      setInputArchivoKey((k) => k + 1);
+      return;
+    }
+    if (archivo.size > IMAGEN_MAX_BYTES) {
+      setErrors((prev) => ({ ...prev, imagen: 'La imagen no debe pesar más de 5MB' }));
+      setFormData((prev) => ({ ...prev, imagen: null }));
+      setInputArchivoKey((k) => k + 1);
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, imagen: undefined }));
+    setFormData((prev) => ({ ...prev, imagen: archivo }));
+  };
+
+  const validar = () => {
+    const nuevos = {};
+
+    if (!formData.nombre.trim()) nuevos.nombre = 'El nombre es obligatorio';
+    if (!formData.categoria.trim()) nuevos.categoria = 'La categoría es obligatoria';
+
+    const precio = aNumero(formData.precioVenta);
+    if (formData.precioVenta.trim() === '' || !Number.isFinite(precio) || precio < 0) {
+      nuevos.precioVenta = 'Ingresa un precio válido (ej. 199.90)';
+    }
+
+    const cantidad = aNumero(formData.cantidadDisponible);
+    if (
+      formData.cantidadDisponible.trim() !== '' &&
+      (!Number.isInteger(cantidad) || cantidad < 0)
+    ) {
+      nuevos.cantidadDisponible = 'Debe ser un entero mayor o igual a 0';
+    }
+
+    const minimo = aNumero(formData.stockMinimo);
+    if (formData.stockMinimo.trim() !== '' && (!Number.isInteger(minimo) || minimo < 0)) {
+      nuevos.stockMinimo = 'Debe ser un entero mayor o igual a 0';
+    }
+
+    if (errors.imagen) nuevos.imagen = errors.imagen;
+
+    setErrors(nuevos);
+    return Object.keys(nuevos).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (enviando) return;
+    setAviso(null);
+
+    if (!validar()) {
+      setAviso({ tipo: 'error', texto: 'Revisa los campos marcados antes de guardar.' });
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      const payload = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion.trim(),
+        categoria: formData.categoria.trim(),
+        estado_inicial: formData.estadoInicial.trim(),
+        precio_venta: aNumero(formData.precioVenta),
+        stock: formData.cantidadDisponible.trim() === '' ? 0 : aNumero(formData.cantidadDisponible),
+        stock_minimo: formData.stockMinimo.trim() === '' ? 0 : aNumero(formData.stockMinimo),
+        imagen: formData.imagen ? await leerArchivoComoDataUrl(formData.imagen) : null,
+      };
+
+      const res = await fetch(`${apiUrl}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {
+        /* la respuesta no era JSON */
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || `Error ${res.status} al guardar el producto`);
+      }
+
+      setAviso({ tipo: 'ok', texto: `Producto "${data.nombre}" guardado correctamente.` });
+      setFormData(FORM_INICIAL);
+      setErrors({});
+      setInputArchivoKey((k) => k + 1);
+      if (onSaved) onSaved(data);
+    } catch (error) {
+      const sinConexion = error instanceof TypeError;
+      setAviso({
+        tipo: 'error',
+        texto: sinConexion
+          ? 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
+          : error.message,
+      });
+    } finally {
+      setEnviando(false);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Datos del producto:', formData);
+  const handleCancelar = () => {
+    if (onCancel) onCancel();
+    else if (typeof window !== 'undefined') window.history.back();
   };
+
+  const claseInput = (campo, base = 'np-input') =>
+    errors[campo] ? `${base} np-input--error` : base;
 
   return (
     <div className="np-layout">
@@ -61,7 +211,7 @@ export const NuevoProducto = () => {
               <span>Inicio</span>
             </a>
 
-            <a href="#inventario" className="np-nav-item np-nav-item--active">
+            <a href={inventarioHref} className="np-nav-item np-nav-item--active">
               <span className="np-nav-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="21 8 21 21 3 21 3 8"/>
@@ -169,7 +319,7 @@ export const NuevoProducto = () => {
         <main className="np-content">
           {/* Encabezado con Botón Flecha */}
           <div className="np-page-header">
-            <button type="button" className="np-back-btn" aria-label="Atrás">
+            <button type="button" className="np-back-btn" aria-label="Atrás" onClick={handleCancelar}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
@@ -186,7 +336,16 @@ export const NuevoProducto = () => {
 
           {/* Tarjeta Card Blanca */}
           <div className="np-card">
-            <form onSubmit={handleSubmit} className="np-form">
+            <form onSubmit={handleSubmit} className="np-form" noValidate>
+              {aviso && (
+                <div
+                  className={`np-alert np-alert--${aviso.tipo}`}
+                  role={aviso.tipo === 'error' ? 'alert' : 'status'}
+                >
+                  {aviso.texto}
+                </div>
+              )}
+
               <div className="np-form-grid">
                 {/* Columna Izquierda */}
                 <div className="np-col">
@@ -196,11 +355,13 @@ export const NuevoProducto = () => {
                       id="nombre"
                       name="nombre"
                       type="text"
-                      className="np-input"
+                      className={claseInput('nombre')}
                       placeholder="Ej. Taladro Percutor Inalámbrico 20V"
                       value={formData.nombre}
                       onChange={handleChange}
+                      maxLength={120}
                     />
+                    {errors.nombre && <span className="np-error-text">{errors.nombre}</span>}
                   </div>
 
                   <div className="np-field">
@@ -213,6 +374,7 @@ export const NuevoProducto = () => {
                       placeholder="Describe brevemente las características físicas, marca o especificaciones del producto..."
                       value={formData.descripcion}
                       onChange={handleChange}
+                      maxLength={1000}
                     />
                   </div>
 
@@ -223,10 +385,11 @@ export const NuevoProducto = () => {
                         id="categoria"
                         name="categoria"
                         type="text"
-                        className="np-input"
+                        className={claseInput('categoria')}
                         value={formData.categoria}
                         onChange={handleChange}
                       />
+                      {errors.categoria && <span className="np-error-text">{errors.categoria}</span>}
                     </div>
                     <div className="np-field">
                       <label htmlFor="estadoInicial" className="np-label">Estado inicial</label>
@@ -251,11 +414,13 @@ export const NuevoProducto = () => {
                         id="precioVenta"
                         name="precioVenta"
                         type="text"
-                        className="np-input"
+                        inputMode="decimal"
+                        className={claseInput('precioVenta')}
                         placeholder="0.00"
                         value={formData.precioVenta}
                         onChange={handleChange}
                       />
+                      {errors.precioVenta && <span className="np-error-text">{errors.precioVenta}</span>}
                     </div>
                     <div className="np-field">
                       <label htmlFor="cantidadDisponible" className="np-label">Cantidad disponible</label>
@@ -263,11 +428,15 @@ export const NuevoProducto = () => {
                         id="cantidadDisponible"
                         name="cantidadDisponible"
                         type="text"
-                        className="np-input"
+                        inputMode="numeric"
+                        className={claseInput('cantidadDisponible')}
                         placeholder="0"
                         value={formData.cantidadDisponible}
                         onChange={handleChange}
                       />
+                      {errors.cantidadDisponible && (
+                        <span className="np-error-text">{errors.cantidadDisponible}</span>
+                      )}
                     </div>
                   </div>
 
@@ -278,11 +447,13 @@ export const NuevoProducto = () => {
                         id="stockMinimo"
                         name="stockMinimo"
                         type="text"
-                        className="np-input"
+                        inputMode="numeric"
+                        className={claseInput('stockMinimo')}
                         placeholder="Ej. 10"
                         value={formData.stockMinimo}
                         onChange={handleChange}
                       />
+                      {errors.stockMinimo && <span className="np-error-text">{errors.stockMinimo}</span>}
                     </div>
                     <div className="np-field">
                       <label htmlFor="estado" className="np-label">Estado</label>
@@ -292,7 +463,7 @@ export const NuevoProducto = () => {
                         type="text"
                         className="np-input"
                         readOnly
-                        value={formData.estado}
+                        value={estado}
                       />
                     </div>
                   </div>
@@ -302,6 +473,7 @@ export const NuevoProducto = () => {
                     <label className="np-label">Imagen del producto</label>
                     <label className="np-dropzone">
                       <input
+                        key={inputArchivoKey}
                         type="file"
                         accept="image/png, image/jpeg, image/jpg"
                         className="np-file-input"
@@ -319,17 +491,23 @@ export const NuevoProducto = () => {
                       </p>
                       <p className="np-dropzone-hint">Formatos recomendados: PNG, JPG (Max. 5MB)</p>
                     </label>
+                    {errors.imagen && <span className="np-error-text">{errors.imagen}</span>}
                   </div>
                 </div>
               </div>
 
               {/* Botones Cancelar y Guardar */}
               <div className="np-actions">
-                <button type="button" className="np-btn np-btn-cancelar">
+                <button
+                  type="button"
+                  className="np-btn np-btn-cancelar"
+                  onClick={handleCancelar}
+                  disabled={enviando}
+                >
                   Cancelar
                 </button>
-                <button type="submit" className="np-btn np-btn-guardar">
-                  Guardar
+                <button type="submit" className="np-btn np-btn-guardar" disabled={enviando}>
+                  {enviando ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </form>

@@ -13,7 +13,7 @@
 </head>
 <body>
   <div class="np-layout">
-    <!-- ================= SIDEBAR (IZQUIERDA) ================= -->
+    <!-- npm ================= SIDEBAR (IZQUIERDA) ================= -->
     <aside class="np-sidebar">
       <div class="np-sidebar-top">
         <!-- Logo y Marca -->
@@ -86,7 +86,7 @@
         </nav>
       </div>
 
-      <!-- Footer del Sidebar con Carlos Ruiz -->
+      
       <div class="np-sidebar-footer">
         <div class="np-user-card">
           <img
@@ -169,7 +169,9 @@
 
         <!-- Tarjeta Card Formulario -->
         <div class="np-card">
-          <form class="np-form" onsubmit="event.preventDefault()">
+          <form id="np-form" class="np-form" novalidate>
+            <div id="np-alert" class="np-alert" hidden></div>
+
             <div class="np-form-grid">
               <!-- ================= COLUMNA IZQUIERDA ================= -->
               <div class="np-col">
@@ -224,6 +226,7 @@
                       id="precioVenta"
                       type="text"
                       class="np-input"
+                      inputmode="decimal"
                       placeholder="0.00"
                     >
                   </div>
@@ -233,6 +236,7 @@
                       id="cantidadDisponible"
                       type="text"
                       class="np-input"
+                      inputmode="numeric"
                       placeholder="0"
                     >
                   </div>
@@ -245,6 +249,7 @@
                       id="stockMinimo"
                       type="text"
                       class="np-input"
+                      inputmode="numeric"
                       placeholder="Ej. 10"
                     >
                   </div>
@@ -260,15 +265,15 @@
                   </div>
                 </div>
 
-                <!-- Imagen del producto (Drag & Drop) -->
+                
                 <div class="np-field">
                   <label class="np-label">Imagen del producto</label>
                   <label class="np-dropzone">
                     <input
+                      id="imagen"
                       type="file"
                       accept="image/png, image/jpeg, image/jpg"
                       class="np-file-input"
-                      onchange="if(this.files && this.files[0]) { document.getElementById('file-prompt').innerText = this.files[0].name; }"
                     >
                     <div class="np-dropzone-icon">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -286,10 +291,10 @@
 
             <!-- Botones Cancelar y Guardar -->
             <div class="np-actions">
-              <button type="button" class="np-btn np-btn-cancelar">
+              <button type="button" id="np-cancelar" class="np-btn np-btn-cancelar">
                 Cancelar
               </button>
-              <button type="submit" class="np-btn np-btn-guardar">
+              <button type="submit" id="np-guardar" class="np-btn np-btn-guardar">
                 Guardar
               </button>
             </div>
@@ -298,5 +303,11 @@
       </main>
     </div>
   </div>
+
+  <!-- URL del backend (npm run dev en Backend/Inventarios_Mahoraga/inventario-stock). Cámbiala si usas otro puerto o servidor. -->
+  <script>
+    window.MAHORAGA_API_URL = 'http://localhost:3000';
+  </script>
+  <script src="js/nuevo_producto.js"></script>
 </body>
 </html>

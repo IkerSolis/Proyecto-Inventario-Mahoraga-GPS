@@ -1,6 +1,9 @@
 import { registrarMovimiento, obtenerHistorial } from '../../../lib/stockService';
+import { aplicarCors } from '../../../lib/cors';
 
 export default function handler(req, res) {
+  if (aplicarCors(req, res)) return;
+
   if (req.method === 'GET') {
     const { product_id } = req.query;
     const historial = obtenerHistorial({ product_id });
